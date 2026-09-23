@@ -24,7 +24,7 @@ export default function Home() {
 
   useEffect(() => {
     loadItems();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [typeFilter, categoryFilter]);
 
   const loadItems = async () => {
