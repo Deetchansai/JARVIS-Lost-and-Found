@@ -10,6 +10,7 @@ export default function History({ currentUserId }) {
 
   useEffect(() => {
     loadUserItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
 
   const loadUserItems = async () => {

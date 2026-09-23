@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Shield, Bell, Check } from 'lucide-react';
+import { User } from 'lucide-react';
 
 export default function Profile() {
   const [profile, setProfile] = useState({
