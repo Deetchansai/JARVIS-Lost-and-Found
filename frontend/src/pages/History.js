@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { Sparkles, Check, X } from 'lucide-react';
 
@@ -8,37 +8,37 @@ export default function History({ currentUserId }) {
   const [matches, setMatches] = useState([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
 
-  useEffect(() => {
-    loadUserItems();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId]);
-
-  const loadUserItems = async () => {
-    try {
-      const res = await api.getItems({ limit: 50 });
-      // In demo/full setup, filter by user id; here display recent items for exploration
-      setUserItems(res.data?.items || []);
-      if (res.data?.items?.length > 0) {
-        handleSelectItem(res.data.items[0]);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleSelectItem = async (item) => {
+  const handleSelectItem = useCallback(async (item) => {
+    if (!item) return;
     setSelectedItem(item);
     setLoadingMatches(true);
     try {
       const res = await api.getMatchesForItem(item._id);
       setMatches(res.data?.matches || []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load item matches:', err);
       setMatches([]);
     } finally {
       setLoadingMatches(false);
     }
-  };
+  }, []);
+
+  const loadUserItems = useCallback(async () => {
+    try {
+      const res = await api.getItems({ limit: 50 });
+      const items = res.data?.items || [];
+      setUserItems(items);
+      if (items.length > 0) {
+        handleSelectItem(items[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load user items:', err);
+    }
+  }, [handleSelectItem]);
+
+  useEffect(() => {
+    loadUserItems();
+  }, [currentUserId, loadUserItems]);
 
   const handleConfirmMatch = async (matchId, newStatus) => {
     try {
@@ -47,7 +47,7 @@ export default function History({ currentUserId }) {
         handleSelectItem(selectedItem);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to update match status:', err);
     }
   };
 
@@ -112,7 +112,6 @@ export default function History({ currentUserId }) {
                 <Sparkles size={20} color="#3b82f6" />
                 <h3 style={{ fontSize: '1.1rem' }}>AI Matches for "{selectedItem.title}"</h3>
               </div>
-
               {loadingMatches ? (
                 <p style={{ color: 'var(--text-muted)' }}>Calculating multimodal pairings...</p>
               ) : matches.length === 0 ? (
@@ -158,7 +157,6 @@ export default function History({ currentUserId }) {
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
                           Location: {candidate?.location} | Status: {m.status}
                         </div>
-
                         {m.status === 'SUGGESTED' && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
