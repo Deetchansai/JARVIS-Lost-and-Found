@@ -45,7 +45,3 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-
-# Fine-tuned model weight blobs (keep configs; ignore large tensors)
-ai-module/models/**/*.safetensors
-ai-module/models/**/model.safetensors

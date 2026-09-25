@@ -7,11 +7,8 @@ color/spatial signature only if the model cannot be loaded.
 
 from typing import List, Dict, Any, Optional
 import io
-from pathlib import Path
 import numpy as np
 from PIL import Image
-
-_FINETUNED_CLIP = Path(__file__).resolve().parents[1] / "models" / "finetuned-clip"
 
 
 class ImageFeatureExtractor:
