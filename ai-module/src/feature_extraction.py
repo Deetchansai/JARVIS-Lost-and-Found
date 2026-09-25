@@ -1,11 +1,11 @@
 """Image Feature Extraction Module
 
-Responsible for computing high-dimensional vector embeddings from item images
-using deep learning models (e.g., CLIP / ResNet / EfficientNet).
-Includes a lightweight statistical baseline fallback that works without heavy GPU dependencies.
+Computes visual embeddings from item photos using open-source CLIP
+(clip-ViT-B-32 via sentence-transformers). Falls back to a lightweight
+color/spatial signature only if the model cannot be loaded.
 """
 
-from typing import List, Optional
+from typing import List, Dict, Any, Optional
 import io
 import numpy as np
 from PIL import Image
@@ -15,42 +15,71 @@ class ImageFeatureExtractor:
     def __init__(self, embedding_dim: int = 512):
         self.embedding_dim = embedding_dim
         self.model = None
+        self.backend = "baseline"
+        self.model_name = "color-histogram-baseline"
         self._init_model()
 
     def _init_model(self):
-        """Initializes model weights if available, or prepares baseline vectorizer."""
-        # In production:
-        # import torch
-        # import torchvision.models as models
-        # self.model = models.resnet50(pretrained=True).eval()
-        self.model = None
+        """Load open-source CLIP for image recognition embeddings."""
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            # Open-source CLIP ViT-B/32 weights (Apache-2.0 / MIT community packaging)
+            self.model = SentenceTransformer("clip-ViT-B-32")
+            self.embedding_dim = int(self.model.get_embedding_dimension())
+            self.backend = "clip"
+            self.model_name = "clip-ViT-B-32"
+            print(f"[ImageFeatureExtractor] Loaded {self.model_name} (dim={self.embedding_dim})")
+        except Exception as exc:
+            self.model = None
+            self.backend = "baseline"
+            self.model_name = "color-histogram-baseline"
+            print(f"[ImageFeatureExtractor] CLIP unavailable ({exc}); using baseline fallback")
+
+    @property
+    def model_info(self) -> Dict[str, Any]:
+        return {
+            "name": self.model_name,
+            "type": "vision-language" if self.backend == "clip" else "statistical-baseline",
+            "family": "CLIP (open-source weights)" if self.backend == "clip" else "histogram",
+            "architecture": "ViT-B/32" if self.backend == "clip" else "color+spatial",
+            "backend": self.backend,
+            "embedding_dim": self.embedding_dim,
+            "task": "image recognition / visual similarity embeddings",
+        }
 
     def extract_from_bytes(self, image_bytes: bytes) -> List[float]:
         """Extracts normalized feature vector from raw image byte stream."""
         try:
             image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
             return self.extract_from_image(image)
-        except Exception as e:
-            # Return zero vector fallback on corrupted image
+        except Exception:
             return [0.0] * self.embedding_dim
 
     def extract_from_image(self, image: Image.Image) -> List[float]:
         """Processes PIL Image into a normalized embedding vector."""
-        # Resize to standard input resolution
+        if self.model is not None:
+            return self._extract_clip(image)
+        return self._extract_baseline(image)
+
+    def _extract_clip(self, image: Image.Image) -> List[float]:
+        """Encode image with open-source CLIP."""
+        embedding = self.model.encode(image, convert_to_numpy=True, normalize_embeddings=True)
+        vector = np.asarray(embedding, dtype=np.float32).flatten()
+        self.embedding_dim = len(vector)
+        return vector.tolist()
+
+    def _extract_baseline(self, image: Image.Image) -> List[float]:
+        """Deterministic color/spatial signature used only when CLIP is unavailable."""
         resized = image.resize((64, 64))
         img_array = np.asarray(resized, dtype=np.float32) / 255.0
 
-        # Construct deterministic visual signature using color distributions & spatial pooling
         r_hist, _ = np.histogram(img_array[:, :, 0], bins=32, range=(0, 1), density=True)
         g_hist, _ = np.histogram(img_array[:, :, 1], bins=32, range=(0, 1), density=True)
         b_hist, _ = np.histogram(img_array[:, :, 2], bins=32, range=(0, 1), density=True)
-
-        # Average pooling across 8x8 spatial grid
         grid_feats = img_array.reshape(8, 8, 8, 8, 3).mean(axis=(1, 3)).flatten()
 
         combined = np.concatenate([r_hist, g_hist, b_hist, grid_feats])
-
-        # Pad or interpolate to target embedding dimension
         if len(combined) < self.embedding_dim:
             padded = np.zeros(self.embedding_dim, dtype=np.float32)
             padded[: len(combined)] = combined
@@ -58,11 +87,9 @@ class ImageFeatureExtractor:
         else:
             vector = combined[: self.embedding_dim]
 
-        # L2 normalize
         norm = np.linalg.norm(vector)
         if norm > 0:
             vector = vector / norm
-
         return vector.tolist()
 
     @staticmethod

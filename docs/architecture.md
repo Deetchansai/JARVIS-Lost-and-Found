@@ -47,10 +47,10 @@ The Campus Lost and Found application connects students, faculty, and campus sec
   - Event notifications (Email & in-app).
 
 ### C. AI Matching Engine (`ai-module/`)
-- **Technology**: FastAPI, NumPy, Scikit-learn (extensible to PyTorch / CLIP / SentenceTransformers).
+- **Technology**: FastAPI, PyTorch, open-source CLIP (`clip-ViT-B-32`) + MiniLM (`all-MiniLM-L6-v2`) via sentence-transformers; TF-IDF/histogram fallbacks if models cannot load.
 - **Sub-modules**:
-  - `feature_extraction.py`: Converts item photos into normalized vector representations.
-  - `text_matcher.py`: Compares descriptions, titles, and categories via semantic cosine similarity.
+  - `feature_extraction.py`: Converts item photos into CLIP visual embeddings (image recognition).
+  - `text_matcher.py`: Compares descriptions, titles, and categories via MiniLM semantic NLP embeddings.
   - `hybrid_match.py`: Combines visual and text signals into a single score:
     $$\text{FinalScore} = (w_{text} \times S_{text}) + (w_{image} \times S_{image})$$
 
