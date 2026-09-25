@@ -23,21 +23,15 @@ class ImageFeatureExtractor:
         self._init_model()
 
     def _init_model(self):
-        """Load fine-tuned CLIP if present, else base open-source CLIP."""
+        """Load open-source CLIP for image recognition embeddings."""
         try:
             from sentence_transformers import SentenceTransformer
 
-            if (_FINETUNED_CLIP / "modules.json").exists():
-                model_id = str(_FINETUNED_CLIP)
-                display_name = "finetuned-clip (clip-ViT-B-32)"
-            else:
-                model_id = "clip-ViT-B-32"
-                display_name = "clip-ViT-B-32"
-
-            self.model = SentenceTransformer(model_id)
+            # Open-source CLIP ViT-B/32 weights (Apache-2.0 / MIT community packaging)
+            self.model = SentenceTransformer("clip-ViT-B-32")
             self.embedding_dim = int(self.model.get_embedding_dimension())
             self.backend = "clip"
-            self.model_name = display_name
+            self.model_name = "clip-ViT-B-32"
             print(f"[ImageFeatureExtractor] Loaded {self.model_name} (dim={self.embedding_dim})")
         except Exception as exc:
             self.model = None
@@ -50,11 +44,10 @@ class ImageFeatureExtractor:
         return {
             "name": self.model_name,
             "type": "vision-language" if self.backend == "clip" else "statistical-baseline",
-            "family": "CLIP (open-source / fine-tuned)" if self.backend == "clip" else "histogram",
+            "family": "CLIP (open-source weights)" if self.backend == "clip" else "histogram",
             "architecture": "ViT-B/32" if self.backend == "clip" else "color+spatial",
             "backend": self.backend,
             "embedding_dim": self.embedding_dim,
-            "finetuned": "finetuned-clip" in self.model_name,
             "task": "image recognition / visual similarity embeddings",
         }
 
