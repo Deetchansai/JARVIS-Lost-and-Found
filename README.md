@@ -67,8 +67,8 @@ The React dev server will open at: `http://localhost:3000`
 ---
 
 ## 🧠 Hybrid AI Matching Pipeline
-1. **Visual Embedding**: Items uploaded with photos are encoded into high-dimensional vector representations.
-2. **Text Semantic Matcher**: Title, category, and descriptive metadata are vectorized to capture semantic similarity.
+1. **Visual Embedding (CLIP)**: Item photos are encoded with open-source `clip-ViT-B-32` into 512-d vectors.
+2. **Text Semantic Matcher (MiniLM)**: Title, category, and descriptions are embedded with open-source `all-MiniLM-L6-v2`.
 3. **Hybrid Scoring Engine**: Matches are computed via weighted fusion:
    $$\text{Score} = w_{\text{text}} \times S_{\text{text}} + w_{\text{image}} \times S_{\text{image}}$$
 4. **Automated Notification**: High-confidence pairings trigger in-app alerts and notifications to both the owner and finder.

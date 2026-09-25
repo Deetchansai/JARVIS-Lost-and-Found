@@ -35,6 +35,8 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     version: str
+    image_model: Dict[str, Any]
+    text_model: Dict[str, Any]
 
 
 class ImageEmbeddingResponse(BaseModel):
@@ -92,6 +94,8 @@ def health_check():
         "status": "healthy",
         "service": "campus-lost-and-found-ai-module",
         "version": "1.0.0",
+        "image_model": feature_extractor.model_info,
+        "text_model": text_matcher.model_info,
     }
 
 
