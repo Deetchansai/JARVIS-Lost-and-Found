@@ -7,9 +7,12 @@ Falls back to TF-IDF if the model cannot be loaded.
 
 from typing import Dict, Any, List, Optional
 import re
+from pathlib import Path
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+_FINETUNED_MINILM = Path(__file__).resolve().parents[1] / "models" / "finetuned-minilm"
 
 
 class TextMatcher:
@@ -27,15 +30,21 @@ class TextMatcher:
         self._init_model()
 
     def _init_model(self):
-        """Load open-source MiniLM sentence embedding model for NLP."""
+        """Load LlamaIndex-fine-tuned MiniLM if present, else base MiniLM."""
         try:
             from sentence_transformers import SentenceTransformer
 
-            # Lightweight open-source BERT variant (Apache-2.0)
-            self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+            if (_FINETUNED_MINILM / "modules.json").exists():
+                model_id = str(_FINETUNED_MINILM)
+                display_name = "finetuned-minilm (all-MiniLM-L6-v2 / LlamaIndex)"
+            else:
+                model_id = "sentence-transformers/all-MiniLM-L6-v2"
+                display_name = "sentence-transformers/all-MiniLM-L6-v2"
+
+            self.model = SentenceTransformer(model_id)
             self.embedding_dim = int(self.model.get_embedding_dimension())
             self.backend = "sentence-transformers"
-            self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
+            self.model_name = display_name
             print(f"[TextMatcher] Loaded {self.model_name} (dim={self.embedding_dim})")
         except Exception as exc:
             self.model = None
@@ -52,6 +61,7 @@ class TextMatcher:
             "architecture": "all-MiniLM-L6-v2" if self.backend == "sentence-transformers" else "word-bigram",
             "backend": self.backend,
             "embedding_dim": self.embedding_dim,
+            "finetuned": "finetuned-minilm" in self.model_name,
             "task": "NLP semantic similarity for title, description, category, location",
         }
 

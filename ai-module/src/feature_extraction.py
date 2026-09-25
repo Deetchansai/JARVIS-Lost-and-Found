@@ -7,8 +7,11 @@ color/spatial signature only if the model cannot be loaded.
 
 from typing import List, Dict, Any, Optional
 import io
+from pathlib import Path
 import numpy as np
 from PIL import Image
+
+_FINETUNED_CLIP = Path(__file__).resolve().parents[1] / "models" / "finetuned-clip"
 
 
 class ImageFeatureExtractor:
@@ -20,15 +23,21 @@ class ImageFeatureExtractor:
         self._init_model()
 
     def _init_model(self):
-        """Load open-source CLIP for image recognition embeddings."""
+        """Load fine-tuned CLIP if present, else base open-source CLIP."""
         try:
             from sentence_transformers import SentenceTransformer
 
-            # Open-source CLIP ViT-B/32 weights (Apache-2.0 / MIT community packaging)
-            self.model = SentenceTransformer("clip-ViT-B-32")
+            if (_FINETUNED_CLIP / "modules.json").exists():
+                model_id = str(_FINETUNED_CLIP)
+                display_name = "finetuned-clip (clip-ViT-B-32)"
+            else:
+                model_id = "clip-ViT-B-32"
+                display_name = "clip-ViT-B-32"
+
+            self.model = SentenceTransformer(model_id)
             self.embedding_dim = int(self.model.get_embedding_dimension())
             self.backend = "clip"
-            self.model_name = "clip-ViT-B-32"
+            self.model_name = display_name
             print(f"[ImageFeatureExtractor] Loaded {self.model_name} (dim={self.embedding_dim})")
         except Exception as exc:
             self.model = None
@@ -41,10 +50,11 @@ class ImageFeatureExtractor:
         return {
             "name": self.model_name,
             "type": "vision-language" if self.backend == "clip" else "statistical-baseline",
-            "family": "CLIP (open-source weights)" if self.backend == "clip" else "histogram",
+            "family": "CLIP (open-source / fine-tuned)" if self.backend == "clip" else "histogram",
             "architecture": "ViT-B/32" if self.backend == "clip" else "color+spatial",
             "backend": self.backend,
             "embedding_dim": self.embedding_dim,
+            "finetuned": "finetuned-clip" in self.model_name,
             "task": "image recognition / visual similarity embeddings",
         }
 
